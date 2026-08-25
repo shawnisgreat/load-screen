@@ -104,7 +104,7 @@ window.DIRE_LOADSCREEN = {
         enabled: true,
         /* Fallback animation used only when no real game progress event has
            arrived yet - lets you preview the bar in a browser tab. */
-        previewFallback: true
+        previewFallback: false
     },
 
     /* Tips shown below the loading bar. Add as many strings as you want to
