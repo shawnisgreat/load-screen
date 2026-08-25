@@ -1,0 +1,3 @@
+Place your music file in this folder and name it exactly: johnny.mp3
+
+Expected path: dire_loadscreen/html/audio/johnny.mp3
