@@ -114,7 +114,8 @@ window.DIRE_LOADSCREEN = {
         enabled: true,
         intervalSeconds: 5,
         items: [
-            'Hydrate up, bitch, you might die!'
+            'Hydrate up, bitch, you might die!',
+            'Wheres my vodka?'
         ]
     }
 };
