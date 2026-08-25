@@ -1,0 +1,472 @@
+:root {
+    --eye-min: 0.42;
+    --eye-max: 0.95;
+    --eye-speed: 3.8s;
+    --scene-flash-brightness: 1.32;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #020407;
+}
+
+body {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+#stage {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow: hidden;
+    background: #020407;
+}
+
+/*
+   Cover the viewport while preserving the artwork's original geometry.
+   This keeps the full-resolution eye overlay locked to the wolf at all times.
+*/
+#artboard {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100vw, calc(100vh * 1672 / 941));
+    height: max(100vh, calc(100vw * 941 / 1672));
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+    isolation: isolate;
+    background: #05070a;
+}
+
+#background,
+#cloudLayer,
+#stormGlow,
+#lightningSvg,
+#redEyes,
+#vignette {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* ---------- Layer stack (back to front) ---------- */
+#background   { z-index: 1; }
+#cloudLayer   { z-index: 2; }
+#smokeLayer   { z-index: 2; } /* painted after cloudLayer in the DOM, so it sits above it */
+#stormGlow    { z-index: 3; }
+#lightningSvg { z-index: 4; }
+#redEyes      { z-index: 5; }
+#vignette     { z-index: 6; }
+
+#background {
+    object-fit: fill;
+    pointer-events: none;
+    transform: translateZ(0);
+    filter: brightness(1) contrast(1.015);
+    transition: filter 120ms ease-out;
+}
+
+#artboard.scene-flash #background {
+    filter: brightness(var(--scene-flash-brightness)) contrast(1.04) saturate(0.88);
+    transition-duration: 40ms;
+}
+
+/* Slow drifting cloud/fog layer. background-position is animated from JS
+   (see script.js) using the actual rendered tile width, so the loop is
+   always seamless regardless of viewport size or aspect ratio. */
+#cloudLayer {
+    pointer-events: none;
+    background-image: url('images/cloud_fog.png');
+    background-repeat: repeat-x;
+    background-size: auto 100%;
+    background-position: 0 0;
+}
+
+/* Faint constant motion inside the existing smoke plume. Position is tuned
+   to the plume in dire_background.png; adjust the left/top/width/height
+   below if you ever swap in a different background painting. */
+#smokeLayer {
+    position: absolute;
+    left: 11%;
+    top: 24.5%;
+    width: 17%;
+    height: 19%;
+    pointer-events: none;
+    background-image: url('images/smoke_wisp.png');
+    background-repeat: repeat-y;
+    background-size: 100% auto;
+    background-position: 0 0;
+    mix-blend-mode: screen;
+    animation: smokeSway var(--smoke-sway-speed, 9s) ease-in-out infinite alternate;
+}
+
+@keyframes smokeSway {
+    0%   { transform: translate(0, 0); }
+    100% { transform: translate(-2.2%, -1%); }
+}
+
+#stormGlow {
+    pointer-events: none;
+    opacity: 0;
+    mix-blend-mode: screen;
+    background:
+        radial-gradient(
+            circle at var(--strike-x, 20%) var(--strike-y, 18%),
+            rgba(220, 230, 255, 0.72) 0%,
+            rgba(175, 195, 255, 0.28) 18%,
+            rgba(120, 145, 210, 0.08) 34%,
+            rgba(0, 0, 0, 0) 60%
+        );
+    transition: opacity 170ms ease-out;
+}
+
+#artboard.scene-flash #stormGlow {
+    opacity: 0.88;
+    transition-duration: 35ms;
+}
+
+#lightningSvg {
+    overflow: visible;
+    pointer-events: none;
+}
+
+.bolt {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+}
+
+.bolt-glow {
+    stroke: rgba(170, 195, 255, 0.88);
+    stroke-width: 9;
+    filter: url(#boltGlow);
+}
+
+.bolt-core {
+    stroke: rgba(248, 250, 255, 0.98);
+    stroke-width: 2.15;
+}
+
+.branch {
+    opacity: 0;
+}
+
+#redEyes {
+    object-fit: fill;
+    pointer-events: none;
+    opacity: var(--eye-min);
+    mix-blend-mode: screen;
+    filter:
+        drop-shadow(0 0 4px rgba(255, 20, 10, 1))
+        drop-shadow(0 0 10px rgba(255, 0, 0, 1))
+        drop-shadow(0 0 22px rgba(255, 0, 0, 0.95))
+        drop-shadow(0 0 40px rgba(255, 0, 0, 0.75))
+        drop-shadow(0 0 60px rgba(220, 0, 0, 0.5));
+    animation: eyeBreath var(--eye-speed) ease-in-out infinite;
+    transition: opacity 1150ms ease-out, filter 1150ms ease-out;
+}
+
+#redEyes.lightning-flare {
+    opacity: 1 !important;
+    animation: none;
+    filter:
+        drop-shadow(0 0 4px rgba(255, 35, 22, 1))
+        drop-shadow(0 0 11px rgba(255, 0, 0, 1))
+        drop-shadow(0 0 24px rgba(255, 0, 0, 0.98))
+        drop-shadow(0 0 48px rgba(255, 0, 0, 0.86))
+        drop-shadow(0 0 76px rgba(180, 0, 0, 0.48));
+    transition: opacity 55ms linear, filter 55ms linear;
+}
+
+#vignette {
+    pointer-events: none;
+    box-shadow: inset 0 0 11vw 2vw rgba(0, 0, 0, 0.34);
+}
+
+@keyframes eyeBreath {
+    0%, 100% {
+        opacity: var(--eye-min);
+    }
+    50% {
+        opacity: var(--eye-max);
+    }
+}
+
+/* ---------- Loading bar + tips ---------- */
+#hud {
+    position: fixed;
+    left: 50%;
+    bottom: 6.2vh;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: min(640px, 78vw);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+
+#loadingBarWrap {
+    width: 100%;
+}
+
+#loadingBarTrack {
+    position: relative;
+    width: 100%;
+    height: 10px;
+    border-radius: 6px;
+    background: rgba(10, 11, 14, 0.65);
+    border: 1px solid rgba(200, 170, 120, 0.38);
+    box-shadow:
+        inset 0 1px 3px rgba(0, 0, 0, 0.65),
+        0 0 12px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+#loadingBarFill {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 0%;
+    background: linear-gradient(90deg, #5a0a06 0%, #b8280f 55%, #ff5a1f 100%);
+    box-shadow: 0 0 10px rgba(255, 90, 31, 0.55);
+    transition: width 320ms ease-out;
+}
+
+#loadingBarSheen {
+    position: absolute;
+    top: 0;
+    left: -40%;
+    width: 30%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.18) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    animation: barSheen 2.6s linear infinite;
+}
+
+@keyframes barSheen {
+    0%   { left: -40%; }
+    100% { left: 110%; }
+}
+
+#tipWrap {
+    margin-top: 12px;
+    min-height: 1.4em;
+    text-align: center;
+}
+
+#tipText {
+    display: inline-block;
+    color: rgba(228, 220, 205, 0.86);
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+}
+
+#tipText.visible {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #redEyes {
+        animation: none;
+        opacity: 0.52;
+    }
+
+    #smokeLayer {
+        animation: none;
+    }
+
+    #loadingBarSheen {
+        animation: none;
+        display: none;
+    }
+}
+
+/* ---------- Loading-screen music controls ---------- */
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+#musicControls {
+    --music-volume: 28%;
+    position: fixed;
+    left: clamp(18px, 2.1vw, 38px);
+    bottom: clamp(18px, 3.2vh, 34px);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 7px 12px 7px 8px;
+    border: 1px solid rgba(196, 160, 106, 0.34);
+    border-radius: 7px;
+    background: rgba(5, 7, 10, 0.68);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.035),
+        0 5px 18px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    color: rgba(233, 225, 210, 0.9);
+}
+
+#musicToggle {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(187, 150, 96, 0.38);
+    border-radius: 50%;
+    background: rgba(17, 18, 21, 0.92);
+    color: rgba(235, 223, 204, 0.95);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+#musicToggle:hover,
+#musicToggle:focus-visible {
+    border-color: rgba(227, 185, 119, 0.78);
+    background: rgba(31, 25, 23, 0.96);
+    box-shadow: 0 0 0 2px rgba(159, 31, 21, 0.2);
+}
+
+#musicToggle.is-playing {
+    border-color: rgba(153, 43, 30, 0.74);
+    box-shadow: inset 0 0 12px rgba(120, 20, 14, 0.2);
+}
+
+#musicVolumeWrap {
+    display: grid;
+    grid-template-columns: auto minmax(90px, 150px) 38px;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+#musicVolumeLabel {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(216, 202, 180, 0.72);
+}
+
+#musicVolume {
+    width: clamp(92px, 10vw, 150px);
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+}
+
+#musicVolume::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(150, 34, 23, 0.95) 0%,
+            rgba(192, 64, 39, 0.96) var(--music-volume),
+            rgba(122, 115, 104, 0.32) var(--music-volume),
+            rgba(122, 115, 104, 0.32) 100%
+        );
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+#musicVolume::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -5px;
+    border: 1px solid rgba(61, 48, 41, 0.9);
+    border-radius: 50%;
+    background: #ddd1bd;
+    box-shadow:
+        0 0 0 2px rgba(0, 0, 0, 0.26),
+        0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+#musicVolume:focus-visible::-webkit-slider-thumb {
+    box-shadow:
+        0 0 0 3px rgba(166, 43, 30, 0.4),
+        0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+#musicVolumeValue {
+    min-width: 38px;
+    color: rgba(225, 214, 196, 0.76);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+#musicControls.music-error {
+    opacity: 0.55;
+}
+
+@media (max-width: 600px) {
+    #musicControls {
+        padding-right: 9px;
+    }
+
+    #musicVolumeWrap {
+        grid-template-columns: minmax(82px, 120px) 34px;
+    }
+
+    #musicVolumeLabel {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #musicToggle,
+    #musicControls {
+        transition: none;
+    }
+}
