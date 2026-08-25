@@ -115,6 +115,7 @@ window.DIRE_LOADSCREEN = {
         intervalSeconds: 5,
         items: [
             'Hydrate up, bitch, you might die!'
+            'Wheres my vodka?'
         ]
     }
 };
